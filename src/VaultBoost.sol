@@ -2,11 +2,12 @@
 pragma solidity ^0.8.0;
 
 import { ILiquidationSource } from "pt-v5-liquidator-interfaces/interfaces/ILiquidationSource.sol";
-import { Vault, PrizePool, IERC20, Ownable } from "pt-v5-vault/Vault.sol";
+import { Vault, PrizePool, IERC20, Ownable, TwabController } from "pt-v5-vault/Vault.sol";
 
 contract VaultBoost is Ownable, ILiquidationSource {
 
   Vault public immutable vault;
+  TwabController public immutable twabController;
   PrizePool public immutable prizePool;
   IERC20 public immutable token;
   uint256 public immutable aprFixedPoint18;
@@ -23,6 +24,7 @@ contract VaultBoost is Ownable, ILiquidationSource {
   ) Ownable(_owner) {
     vault = _vault;
     prizePool = _vault.prizePool();
+    twabController = prizePool.twabController();
     token = _vault.asset();
     aprFixedPoint18 = _aprFixedPoint18;
     lastAccruedAt = block.timestamp;
@@ -59,8 +61,9 @@ contract VaultBoost is Ownable, ILiquidationSource {
   }
 
   function _accrue() internal {
+    uint256 totalSupply = twabController.getTotalSupplyTwabBetween(address(vault), lastAccruedAt, block.timestamp);
     uint256 deltaTime = block.timestamp - lastAccruedAt;
-    uint256 interest = (deltaTime * aprFixedPoint18 * vault.totalAssets()) / (365 days * 1e18);
+    uint256 interest = (deltaTime * aprFixedPoint18 * totalSupply) / (365 days * 1e18);
     uint256 availableBalance = token.balanceOf(address(this));
     available += availableBalance > interest ? uint208(interest) : availableBalance;
     lastAccruedAt = uint48(block.timestamp);
