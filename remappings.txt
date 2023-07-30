@@ -3,3 +3,4 @@ forge-std/=lib/forge-std/src/
 pt-v5-liquidator-interfaces=lib/pt-v5-liquidator-interfaces/src/
 pt-v5-prize-pool/=lib/pt-v5-prize-pool/src/
 prb-math=lib/prb-math/src/
+openzeppelin=lib/openzeppelin-contracts/contracts/
