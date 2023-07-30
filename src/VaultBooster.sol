@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 
 import { ILiquidationSource } from "pt-v5-liquidator-interfaces/interfaces/ILiquidationSource.sol";
-import { PrizePool, IERC20, Ownable, TwabController } from "pt-v5-prize-pool/PrizePool.sol";
+import { PrizePool, IERC20, TwabController } from "pt-v5-prize-pool/PrizePool.sol";
 import { UD60x18, intoUint128 } from "prb-math/UD60x18.sol";
 
 error OnlyLiquidationPair();
