@@ -1,16 +1,16 @@
-# Foundry template
+<p align="center">
+  <a href="https://github.com/pooltogether/pooltogether--brand-assets">
+    <img src="https://github.com/pooltogether/pooltogether--brand-assets/blob/977e03604c49c63314450b5d432fe57d34747c66/logo/pooltogether-logo--purple-gradient.png?raw=true" alt="PoolTogether Brand" style="max-width:100%;" width="400">
+  </a>
+</p>
 
-Template to kickstart a Foundry project.
+# PoolTogether V5 Vault Booster
 
-## Getting started
+[![Code Coverage](https://github.com/generationsoftware/pt-v5-vault-boost/actions/workflows/coverage.yml/badge.svg)](https://github.com/generationsoftware/pt-v5-vault-boost/actions/workflows/coverage.yml)
+[![built-with openzeppelin](https://img.shields.io/badge/built%20with-OpenZeppelin-3677FF)](https://docs.openzeppelin.com/)
+![MIT license](https://img.shields.io/badge/license-MIT-blue)
 
-The easiest way to get started is by clicking the [Use this template](https://github.com/pooltogether/foundry-template/generate) button at the top right of this page.
-
-If you prefer to go the CLI way:
-
-```
-forge init my-project --template https://github.com/pooltogether/foundry-template
-```
+The PoolTogether V5 Vault Booster allows anyone to boost the winning chances of all users of a vault. The Vault Booster can liquidate any tokens and contribute them to the prize pool on behalf of the target vault.
 
 ## Development
 

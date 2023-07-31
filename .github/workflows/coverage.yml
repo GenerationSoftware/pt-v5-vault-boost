@@ -1,4 +1,4 @@
-name: coverage
+name: 100% Test Coverage
 
 on: ["push", "pull_request"]
 
