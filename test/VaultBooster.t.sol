@@ -50,6 +50,7 @@ contract VaultBoosterTest is Test {
   );
 
   event BoostAccrued(
+    IERC20 indexed token,
     uint256 availableBoostBalance
   );
 
@@ -169,7 +170,7 @@ contract VaultBoosterTest is Test {
     );
 
     vm.expectEmit(true, true, true, true);
-    emit BoostAccrued(1e18 + 10e18);
+    emit BoostAccrued(boostToken, 1e18 + 10e18);
 
     booster.accrue(boostToken);
     Boost memory boost = booster.getBoost(boostToken);
