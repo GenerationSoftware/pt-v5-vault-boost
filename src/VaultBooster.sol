@@ -273,9 +273,9 @@ contract VaultBooster is Ownable, ILiquidationSource {
       uint256 totalSupply = twabController.getTotalSupplyTwabBetween(address(vault), uint32(boost.lastAccruedAt), uint32(block.timestamp));
       deltaAmount += convert(boost.multiplierOfTotalSupplyPerSecond.intoUD60x18().mul(convert(deltaTime)).mul(convert(totalSupply)));
     }
-    uint256 availableBalance = _tokenOut.balanceOf(address(this));
-    deltaAmount = availableBalance > deltaAmount ? deltaAmount : availableBalance;
-    return boost.available + deltaAmount;
+    uint256 actualBalance = _tokenOut.balanceOf(address(this));
+    uint256 availableBoost = boost.available + deltaAmount;
+    return actualBalance > availableBoost ? availableBoost : actualBalance;
   }
 
   /// @notice Requires the given token to be the prize token
