@@ -189,10 +189,37 @@ contract VaultBoosterTest is Test {
       abi.encodeWithSelector(twabController.getTotalSupplyTwabBetween.selector, vault, 0, 10),
       abi.encode(UD60x18.wrap(5e18))
     );
-    booster.accrue(boostToken); // 0.1 * 10 * 5 = 5
+    booster.accrue(boostToken);
     Boost memory boost = booster.getBoost(boostToken);
     assertEq(boost.lastAccruedAt, 10, "last accrued at"); // called accrued
     assertEq(boost.available, 1e18, "available"); // max 1e18 has accrued
+  }
+
+  function testAccrue_reduceAvailable() public {
+    vm.warp(0);
+    mockBoostTokenBalance(100e18);
+    booster.setBoost(boostToken, liquidationPair, UD2x18.wrap(0.02e18), 1e18, 0);
+    vm.warp(10);
+    vm.mockCall(
+      address(twabController),
+      abi.encodeWithSelector(twabController.getTotalSupplyTwabBetween.selector, vault, 0, 10),
+      abi.encode(UD60x18.wrap(5e18))
+    );
+    booster.accrue(boostToken); // (0.02 * 5 * 10) + (1 * 10) = 11
+    Boost memory boost = booster.getBoost(boostToken);
+    assertEq(boost.lastAccruedAt, 10, "last accrued at");
+    assertEq(boost.available, 11e18, "available"); // normal amount has accrued
+
+    vm.mockCall(
+      address(boostToken),
+      abi.encodeWithSelector(boostToken.transfer.selector, address(this), 96e18),
+      abi.encode(true)
+    );
+    booster.withdraw(boostToken, 96e18);
+
+    booster.accrue(boostToken);
+    boost = booster.getBoost(boostToken);
+    assertEq(boost.available, 4e18, "available"); // reduced
   }
 
   function testWithdraw() public {
