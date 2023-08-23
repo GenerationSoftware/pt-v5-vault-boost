@@ -11,7 +11,8 @@ import {
   InitialAvailableExceedsBalance,
   OnlyLiquidationPair,
   UnsupportedTokenIn,
-  InsufficientAvailableBalance
+  InsufficientAvailableBalance,
+  FlashSwapNotSupported
 } from "../src/VaultBooster.sol";
 
 import { PrizePool, TwabController, IERC20 } from "pt-v5-prize-pool/PrizePool.sol";
@@ -271,7 +272,7 @@ contract VaultBoosterTest is Test {
     vm.startPrank(liquidationPair);
     // vm.expectEmit(true, true, true, true);
     // emit Liquidated(boostToken, address(this), 9999e18, 1e18, 0);
-    booster.liquidate(address(this), address(prizeToken), 9999e18, address(boostToken), 1e18);
+    booster.liquidate(address(this), address(this), address(prizeToken), 9999e18, address(boostToken), 1e18, bytes(""));
     vm.stopPrank();
 
     boost = booster.getBoost(boostToken);
@@ -287,7 +288,31 @@ contract VaultBoosterTest is Test {
 
     vm.startPrank(liquidationPair);
     vm.expectRevert(abi.encodeWithSelector(InsufficientAvailableBalance.selector, 1000e18, 1e18));
-    booster.liquidate(address(this), address(prizeToken), 9999e18, address(boostToken), 1000e18);
+    booster.liquidate(address(this), address(this), address(prizeToken), 9999e18, address(boostToken), 1000e18, bytes(""));
+    vm.stopPrank();
+  }
+
+  function testLiquidate_FlashSwapNotSupported() public {
+    vm.warp(0);
+    booster.setBoost(boostToken, liquidationPair, UD2x18.wrap(0), 1e18, 0);
+    mockBoostTokenBalance(1e18);
+    vm.warp(10);
+
+    vm.mockCall(
+      address(boostToken),
+      abi.encodeWithSelector(IERC20.transfer.selector, address(this), 1e18),
+      abi.encode(true)
+    );
+
+    vm.mockCall(
+      address(prizePool),
+      abi.encodeWithSelector(prizePool.contributePrizeTokens.selector, vault, 9999e18),
+      abi.encode(9999e18)
+    );
+
+    vm.startPrank(liquidationPair);
+    vm.expectRevert(abi.encodeWithSelector(FlashSwapNotSupported.selector));
+    booster.liquidate(address(this), address(this), address(prizeToken), 9999e18, address(boostToken), 1e18, bytes("flash swap data that is not empty"));
     vm.stopPrank();
   }
 
@@ -298,7 +323,7 @@ contract VaultBoosterTest is Test {
     vm.warp(10);
 
     vm.expectRevert(abi.encodeWithSelector(OnlyLiquidationPair.selector));
-    booster.liquidate(address(this), address(prizeToken), 9999e18, address(boostToken), 1000e18);
+    booster.liquidate(address(this), address(this), address(prizeToken), 9999e18, address(boostToken), 1000e18, bytes(""));
   }
 
   function testTargetOf() public {
