@@ -58,4 +58,43 @@ contract VaultBoosterTest is Test {
     assertEq(booster.owner(), address(this));
   }
 
+  function testCreateVaultBooster_secondDeployShouldHaveDiffAddress() public {
+    VaultBooster _vault1 = factory.createVaultBooster(
+      prizePool,
+      vault,
+      address(this)
+    );
+
+    VaultBooster _vault2 = factory.createVaultBooster(
+      prizePool,
+      vault,
+      address(this)
+    );
+
+    assertNotEq(address(_vault1), address(_vault2));
+  }
+
+  function testCreateVaultBooster_2CallerDeploysShouldHaveDiffAddresses() public {
+    address _addr1 = makeAddr("addr1");
+    address _addr2 = makeAddr("addr2");
+
+    vm.startPrank(_addr1);
+    VaultBooster _vault1 = factory.createVaultBooster(
+      prizePool,
+      vault,
+      address(this)
+    );
+    vm.stopPrank();
+
+    vm.startPrank(_addr2);
+    VaultBooster _vault2 = factory.createVaultBooster(
+      prizePool,
+      vault,
+      address(this)
+    );
+    vm.stopPrank();
+
+    assertNotEq(address(_vault1), address(_vault2));
+  }
+
 }
