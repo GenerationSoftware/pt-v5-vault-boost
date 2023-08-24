@@ -133,7 +133,7 @@ contract VaultBooster is Ownable, ILiquidationSource {
   /// @param _liquidationPair The liquidation pair that will facilitate liquidations
   /// @param _multiplierOfTotalSupplyPerSecond The multiplier of the total supply per second, useful for simulating APR. Can be combined with tokensPerSecond.
   /// @param _tokensPerSecond A simple tokensPerSecond*deltaTime accumulator. Can be combined with the multiplier.
-  /// @param _initialAvailable The initial available balance. Must be less than or equal to the current balance of the VaultBooster of the given token.
+  /// @param _initialAvailable The initial available balance. If this value is greater than this contract's current balance of the given token, the current balance will be used instead.
   function setBoost(IERC20 _token, address _liquidationPair, UD2x18 _multiplierOfTotalSupplyPerSecond, uint96 _tokensPerSecond, uint144 _initialAvailable) external onlyOwner {
     uint144 available;
     if (_initialAvailable > 0) {
