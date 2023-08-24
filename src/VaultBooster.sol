@@ -14,11 +14,6 @@ import { SafeCast } from "openzeppelin/utils/math/SafeCast.sol";
 /// @notice Emitted when someone tries to call liquidate and isn't the liquidation pair
 error OnlyLiquidationPair();
 
-/// @notice Emitted when the initial available exceeds the balance
-/// @param initialAvailable The initial available
-/// @param balance The actual token balance
-error InitialAvailableExceedsBalance(uint144 initialAvailable, uint256 balance);
-
 /// @notice Emitted when the liquidator attempts to liquidate more than the available balance
 error InsufficientAvailableBalance(uint256 amountOut, uint256 available);
 
@@ -138,19 +133,22 @@ contract VaultBooster is Ownable, ILiquidationSource {
   /// @param _liquidationPair The liquidation pair that will facilitate liquidations
   /// @param _multiplierOfTotalSupplyPerSecond The multiplier of the total supply per second, useful for simulating APR. Can be combined with tokensPerSecond.
   /// @param _tokensPerSecond A simple tokensPerSecond*deltaTime accumulator. Can be combined with the multiplier.
-  /// @param _initialAvailable The initial available balance. Must be less than or equal to the current balance of the VaultBooster of the given token.
+  /// @param _initialAvailable The initial available balance. If this value is greater than this contract's current balance of the given token, the current balance will be used instead.
   function setBoost(IERC20 _token, address _liquidationPair, UD2x18 _multiplierOfTotalSupplyPerSecond, uint96 _tokensPerSecond, uint144 _initialAvailable) external onlyOwner {
+    uint144 available;
     if (_initialAvailable > 0) {
       uint256 balance = _token.balanceOf(address(this));
       if (balance < _initialAvailable) {
-        revert InitialAvailableExceedsBalance(_initialAvailable, balance);
+        available = SafeCast.toUint144(balance);
+      } else {
+        available = _initialAvailable;
       }
     }
     _boosts[_token] = Boost({
       liquidationPair: _liquidationPair,
       multiplierOfTotalSupplyPerSecond: _multiplierOfTotalSupplyPerSecond,
       tokensPerSecond: _tokensPerSecond,
-      available: _initialAvailable,
+      available: available,
       lastAccruedAt: uint48(block.timestamp)
     });
 

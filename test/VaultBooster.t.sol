@@ -8,7 +8,6 @@ import {
   Boost,
   UD60x18,
   UD2x18,
-  InitialAvailableExceedsBalance,
   OnlyLiquidationPair,
   UnsupportedTokenIn,
   InsufficientAvailableBalance
@@ -112,8 +111,9 @@ contract VaultBoosterTest is Test {
 
   function testSetBoost_ltAvailable() public {
     mockBoostTokenBalance(0.5e18);
-    vm.expectRevert(abi.encodeWithSelector(InitialAvailableExceedsBalance.selector, 1e18, 0.5e18));
     booster.setBoost(boostToken, liquidationPair, UD2x18.wrap(0.001e18), 0.03e18, 1e18);
+    Boost memory boost = booster.getBoost(boostToken);
+    assertEq(boost.available, 0.5e18);
   }
 
   function testDeposit() public {
