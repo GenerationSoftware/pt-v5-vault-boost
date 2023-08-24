@@ -25,6 +25,12 @@ error InsufficientAvailableBalance(uint256 amountOut, uint256 available);
 /// @notice Emitted when the liquidator attempts to liquidate for a token other than the prize token 
 error UnsupportedTokenIn();
 
+/// @notice Emitted when a withdraw of zero amount is initiated.
+error ZeroAmountWithdraw();
+
+/// @notice Emitted when a deposit of zero amount is initiated.
+error ZeroAmountDeposit();
+
 /// @notice Struct that holds the boost data
 struct Boost {
   address liquidationPair;
@@ -169,6 +175,7 @@ contract VaultBooster is Ownable, ILiquidationSource {
   /// @param _token The token to deposit
   /// @param _amount The amount to deposit
   function deposit(IERC20 _token, uint256 _amount) external {
+    if (0 == _amount) revert ZeroAmountDeposit();
     _accrue(_token);
     _token.safeTransferFrom(msg.sender, address(this), _amount);
 
@@ -186,6 +193,7 @@ contract VaultBooster is Ownable, ILiquidationSource {
   /// @param _token The token to withdraw
   /// @param _amount The amount of tokens to withdraw
   function withdraw(IERC20 _token, uint256 _amount) external onlyOwner {
+    if (0 == _amount) revert ZeroAmountWithdraw();
     uint256 availableBoost = _accrue(_token);
     uint256 availableBalance = _token.balanceOf(address(this));
     uint256 remainingBalance = availableBalance - _amount;
