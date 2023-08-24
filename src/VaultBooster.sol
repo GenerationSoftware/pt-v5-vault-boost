@@ -25,6 +25,12 @@ error ZeroAmountWithdraw();
 /// @notice Emitted when a deposit of zero amount is initiated.
 error ZeroAmountDeposit();
 
+/// @notice Emitted when the vault is set to the zero address.
+error VaultZeroAddress();
+
+/// @notice Emitted when the owner is set to the zero address.
+error OwnerZeroAddress();
+
 /// @notice Struct that holds the boost data
 struct Boost {
   address liquidationPair;
@@ -120,6 +126,8 @@ contract VaultBooster is Ownable, ILiquidationSource {
     address _vault,
     address _owner
   ) Ownable(_owner) {
+    if (address(0) == _vault) revert VaultZeroAddress();
+    if (address(0) == _owner) revert OwnerZeroAddress();
     prizePool = _prizePool;
     twabController = prizePool.twabController();
     vault = _vault;
