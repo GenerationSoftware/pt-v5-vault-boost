@@ -10,7 +10,9 @@ import {
   UD2x18,
   OnlyLiquidationPair,
   UnsupportedTokenIn,
-  InsufficientAvailableBalance
+  InsufficientAvailableBalance,
+  ZeroAmountWithdraw,
+  ZeroAmountDeposit
 } from "../src/VaultBooster.sol";
 
 import { PrizePool, TwabController, IERC20 } from "pt-v5-prize-pool/PrizePool.sol";
@@ -130,6 +132,16 @@ contract VaultBoosterTest is Test {
     assertEq(boost.lastAccruedAt, 1 days); // called accrued
   }
 
+  function testDeposit_ZeroAmountDeposit() public {
+    mockBoostTokenBalance(1e18);
+    booster.setBoost(boostToken, liquidationPair, UD2x18.wrap(0), 0, 1e18);
+    vm.mockCall(address(boostToken), abi.encodeWithSelector(IERC20.transferFrom.selector, address(this), address(booster), 2e18), abi.encode(true));
+    vm.warp(1 days);
+
+    vm.expectRevert(abi.encodeWithSelector(ZeroAmountDeposit.selector));
+    booster.deposit(boostToken, 0); // zero amount
+  }
+
   function testAccrue_tokensPerSecond() public {
     vm.warp(0);
     mockBoostTokenBalance(1e18);
@@ -237,6 +249,20 @@ contract VaultBoosterTest is Test {
     booster.withdraw(boostToken, 1e18);
     Boost memory boost = booster.getBoost(boostToken);
     assertEq(boost.available, 0);
+  }
+
+  function testWithdraw_ZeroAmountWithdraw() public {
+    vm.warp(0);
+    booster.setBoost(boostToken, liquidationPair, UD2x18.wrap(0), 1e18, 0);
+    mockBoostTokenBalance(1e18);
+    vm.warp(10);
+    vm.mockCall(
+      address(boostToken),
+      abi.encodeWithSelector(IERC20.transfer.selector, address(this), 1e18),
+      abi.encode(true)
+    );
+    vm.expectRevert(abi.encodeWithSelector(ZeroAmountWithdraw.selector));
+    booster.withdraw(boostToken, 0); // zero amount
   }
 
   function testLiquidatableBalanceOf() public {
