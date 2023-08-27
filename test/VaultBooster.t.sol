@@ -14,7 +14,9 @@ import {
   ZeroAmountWithdraw,
   ZeroAmountDeposit,
   VaultZeroAddress,
-  OwnerZeroAddress
+  OwnerZeroAddress,
+  CannotDepositWithoutBoost,
+  InsufficientAvailableBalance
 } from "../src/VaultBooster.sol";
 
 import { IFlashSwapCallback } from "pt-v5-liquidator-interfaces/interfaces/IFlashSwapCallback.sol";
@@ -136,7 +138,7 @@ contract VaultBoosterTest is Test {
     assertEq(boost.available, 0.5e18);
   }
 
-  function testDeposit() public {
+  function testDeposit_success() public {
     mockBoostTokenBalance(1e18);
     booster.setBoost(boostToken, liquidationPair, UD2x18.wrap(0), 0, 1e18);
     vm.mockCall(address(boostToken), abi.encodeWithSelector(IERC20.transferFrom.selector, address(this), address(booster), 2e18), abi.encode(true));
@@ -158,6 +160,11 @@ contract VaultBoosterTest is Test {
 
     vm.expectRevert(abi.encodeWithSelector(ZeroAmountDeposit.selector));
     booster.deposit(boostToken, 0); // zero amount
+  }
+
+  function testDeposit_CannotDepositWithoutBoost() public {
+    vm.expectRevert(abi.encodeWithSelector(CannotDepositWithoutBoost.selector, boostToken));
+    booster.deposit(boostToken, 2e18);
   }
 
   function testAccrue_tokensPerSecond() public {

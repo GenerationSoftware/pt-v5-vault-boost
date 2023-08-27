@@ -31,6 +31,10 @@ error VaultZeroAddress();
 /// @notice Emitted when the owner is set to the zero address.
 error OwnerZeroAddress();
 
+/// @notice Emitted when someone tries to deposit when no boost has been set for a token
+/// @param token The token that was attempted to be deposited
+error CannotDepositWithoutBoost(IERC20 token);
+
 /// @notice Struct that holds the boost data
 struct Boost {
   address liquidationPair;
@@ -179,7 +183,7 @@ contract VaultBooster is Ownable, ILiquidationSource {
   /// @dev Useful because it ensures `accrue` is called before depositing
   /// @param _token The token to deposit
   /// @param _amount The amount to deposit
-  function deposit(IERC20 _token, uint256 _amount) external {
+  function deposit(IERC20 _token, uint256 _amount) onlyBoosted(_token) external {
     if (0 == _amount) revert ZeroAmountDeposit();
     _accrue(_token);
     _token.safeTransferFrom(msg.sender, address(this), _amount);
@@ -315,6 +319,13 @@ contract VaultBooster is Ownable, ILiquidationSource {
   modifier onlyLiquidationPair(address _token) {
     if (_boosts[IERC20(_token)].liquidationPair != msg.sender) {
       revert OnlyLiquidationPair();
+    }
+    _;
+  }
+
+  modifier onlyBoosted(IERC20 _token) {
+    if (_boosts[_token].liquidationPair == address(0)) {
+      revert CannotDepositWithoutBoost(_token);
     }
     _;
   }
