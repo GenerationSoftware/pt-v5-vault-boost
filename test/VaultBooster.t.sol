@@ -152,7 +152,6 @@ contract VaultBoosterTest is Test {
     assertEq(boost.lastAccruedAt, 1 days); // called accrued
   }
 
-<<<<<<< HEAD
   function testDeposit_ZeroAmountDeposit() public {
     mockBoostTokenBalance(1e18);
     booster.setBoost(boostToken, liquidationPair, UD2x18.wrap(0), 0, 1e18);
@@ -161,11 +160,11 @@ contract VaultBoosterTest is Test {
 
     vm.expectRevert(abi.encodeWithSelector(ZeroAmountDeposit.selector));
     booster.deposit(boostToken, 0); // zero amount
-=======
+  }
+
   function testDeposit_CannotDepositWithoutBoost() public {
     vm.expectRevert(abi.encodeWithSelector(CannotDepositWithoutBoost.selector, boostToken));
     booster.deposit(boostToken, 2e18);
->>>>>>> a448648 (Added deposit protection)
   }
 
   function testAccrue_tokensPerSecond() public {

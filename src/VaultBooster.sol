@@ -183,12 +183,8 @@ contract VaultBooster is Ownable, ILiquidationSource {
   /// @dev Useful because it ensures `accrue` is called before depositing
   /// @param _token The token to deposit
   /// @param _amount The amount to deposit
-<<<<<<< HEAD
-  function deposit(IERC20 _token, uint256 _amount) external {
-    if (0 == _amount) revert ZeroAmountDeposit();
-=======
   function deposit(IERC20 _token, uint256 _amount) onlyBoosted(_token) external {
->>>>>>> a448648 (Added deposit protection)
+    if (0 == _amount) revert ZeroAmountDeposit();
     _accrue(_token);
     _token.safeTransferFrom(msg.sender, address(this), _amount);
 
