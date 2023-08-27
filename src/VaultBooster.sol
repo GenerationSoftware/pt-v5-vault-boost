@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.0;
 
-import "forge-std/console2.sol";
-
+import { IFlashSwapCallback } from "pt-v5-liquidator-interfaces/interfaces/IFlashSwapCallback.sol";
 import { ILiquidationSource } from "pt-v5-liquidator-interfaces/interfaces/ILiquidationSource.sol";
 import { PrizePool, IERC20, TwabController } from "pt-v5-prize-pool/PrizePool.sol";
 import { UD60x18, convert } from "prb-math/UD60x18.sol";
@@ -208,34 +207,44 @@ contract VaultBooster is Ownable, ILiquidationSource {
     return _accrue(IERC20(_tokenOut));
   }
 
+  /// @inheritdoc ILiquidationSource
   /// @notice Allows the liquidation pair to liquidate tokens
-  /// @param _account The account that will receive the liquidated tokens
-  /// @param _tokenIn The tokens that will be contributed to the prize pool. Must be the prize token
-  /// @param _amountIn The amount of tokens to contribute to the prize pool
-  /// @param _tokenOut The tokens that are being liquidated
-  /// @param _amountOut The amount of tokens to liquidate
   function liquidate(
-    address _account,
-    address _tokenIn,
-    uint256 _amountIn,
-    address _tokenOut,
-    uint256 _amountOut
-  ) external override onlyPrizeToken(_tokenIn) onlyLiquidationPair(_tokenOut) returns (bool) {
-    uint256 amountAvailable = _computeAvailable(IERC20(_tokenOut));
-    if (_amountOut > amountAvailable) {
-      revert InsufficientAvailableBalance(_amountOut, amountAvailable);
+    address sender,
+    address receiver,
+    address tokenIn,
+    uint256 amountIn,
+    address tokenOut,
+    uint256 amountOut,
+    bytes calldata _flashSwapData
+  ) external override onlyPrizeToken(tokenIn) onlyLiquidationPair(tokenOut) returns (bool) {
+    uint256 amountAvailable = _computeAvailable(IERC20(tokenOut));
+    if (amountOut > amountAvailable) {
+      revert InsufficientAvailableBalance(amountOut, amountAvailable);
     }
-    amountAvailable = (amountAvailable - _amountOut);
-    _boosts[IERC20(_tokenOut)].available = amountAvailable.toUint144();
-    _boosts[IERC20(_tokenOut)].lastAccruedAt = uint48(block.timestamp);
-    prizePool.contributePrizeTokens(vault, _amountIn);
-    IERC20(_tokenOut).safeTransfer(_account, _amountOut);
+    amountAvailable = (amountAvailable - amountOut);
+    _boosts[IERC20(tokenOut)].available = amountAvailable.toUint144();
+    _boosts[IERC20(tokenOut)].lastAccruedAt = uint48(block.timestamp);
+
+    IERC20(tokenOut).safeTransfer(receiver, amountOut);
+
+    if (_flashSwapData.length > 0) {
+      IFlashSwapCallback(receiver).flashSwapCallback(
+        msg.sender,
+        sender,
+        amountIn,
+        amountOut,
+        _flashSwapData
+      );
+    }
+    
+    prizePool.contributePrizeTokens(vault, amountIn);
 
     emit Liquidated(
-      IERC20(_tokenOut),
-      _account,
-      _amountIn,
-      _amountOut,
+      IERC20(tokenOut),
+      receiver,
+      amountIn,
+      amountOut,
       amountAvailable
     );
 

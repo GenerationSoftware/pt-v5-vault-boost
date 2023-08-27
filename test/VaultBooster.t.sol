@@ -15,6 +15,7 @@ import {
   ZeroAmountDeposit
 } from "../src/VaultBooster.sol";
 
+import { IFlashSwapCallback } from "pt-v5-liquidator-interfaces/interfaces/IFlashSwapCallback.sol";
 import { PrizePool, TwabController, IERC20 } from "pt-v5-prize-pool/PrizePool.sol";
 
 /// @dev See the "Writing Tests" section in the Foundry Book if this is your first time with Forge.
@@ -297,7 +298,7 @@ contract VaultBoosterTest is Test {
     vm.startPrank(liquidationPair);
     // vm.expectEmit(true, true, true, true);
     // emit Liquidated(boostToken, address(this), 9999e18, 1e18, 0);
-    booster.liquidate(address(this), address(prizeToken), 9999e18, address(boostToken), 1e18);
+    booster.liquidate(address(this), address(this), address(prizeToken), 9999e18, address(boostToken), 1e18, bytes(""));
     vm.stopPrank();
 
     boost = booster.getBoost(boostToken);
@@ -313,7 +314,7 @@ contract VaultBoosterTest is Test {
 
     vm.startPrank(liquidationPair);
     vm.expectRevert(abi.encodeWithSelector(InsufficientAvailableBalance.selector, 1000e18, 1e18));
-    booster.liquidate(address(this), address(prizeToken), 9999e18, address(boostToken), 1000e18);
+    booster.liquidate(address(this), address(this), address(prizeToken), 9999e18, address(boostToken), 1000e18, bytes(""));
     vm.stopPrank();
   }
 
@@ -324,7 +325,7 @@ contract VaultBoosterTest is Test {
     vm.warp(10);
 
     vm.expectRevert(abi.encodeWithSelector(OnlyLiquidationPair.selector));
-    booster.liquidate(address(this), address(prizeToken), 9999e18, address(boostToken), 1000e18);
+    booster.liquidate(address(this), address(this), address(prizeToken), 9999e18, address(boostToken), 1000e18, bytes(""));
   }
 
   function testTargetOf() public {
@@ -334,6 +335,44 @@ contract VaultBoosterTest is Test {
   function testTargetOf_unknownToken() public {
     vm.expectRevert(abi.encodeWithSelector(UnsupportedTokenIn.selector));
     booster.targetOf(address(boostToken));
+  }
+
+  function testLiquidate_triggerCallback() public {
+    vm.warp(0);
+    booster.setBoost(boostToken, liquidationPair, UD2x18.wrap(0), 1e18, 0);
+    mockBoostTokenBalance(1e18);
+    vm.warp(10);
+
+    vm.mockCall(
+      address(boostToken),
+      abi.encodeWithSelector(IERC20.transfer.selector, address(this), 1e18),
+      abi.encode(true)
+    );
+
+    vm.mockCall(
+      address(prizePool),
+      abi.encodeWithSelector(prizePool.contributePrizeTokens.selector, vault, 9999e18),
+      abi.encode(9999e18)
+    );
+    
+    address receiver = makeAddr("receiver");
+    vm.mockCallRevert(
+      receiver,
+      abi.encodeWithSelector(
+        IFlashSwapCallback.flashSwapCallback.selector,
+        address(liquidationPair),
+        address(this),
+        9999e18,
+        1e18,
+        abi.encode("testing")
+      ),
+      abi.encodePacked("flash swap callback entered")
+    );
+
+    vm.startPrank(liquidationPair);
+    vm.expectRevert(abi.encodePacked("flash swap callback entered"));
+    booster.liquidate(address(this), receiver, address(prizeToken), 9999e18, address(boostToken), 1e18, abi.encode("testing"));
+    vm.stopPrank();
   }
 
   /** =========== MOCKS ============= */
