@@ -12,7 +12,9 @@ import {
   UnsupportedTokenIn,
   InsufficientAvailableBalance,
   ZeroAmountWithdraw,
-  ZeroAmountDeposit
+  ZeroAmountDeposit,
+  VaultZeroAddress,
+  OwnerZeroAddress
 } from "../src/VaultBooster.sol";
 
 import { IFlashSwapCallback } from "pt-v5-liquidator-interfaces/interfaces/IFlashSwapCallback.sol";
@@ -84,6 +86,21 @@ contract VaultBoosterTest is Test {
     assertEq(booster.vault(), vault);
     assertEq(address(booster.twabController()), address(twabController));
     assertEq(booster.owner(), address(this));
+  }
+
+  function testConstructor_OwnerZeroAddress() public {
+    vm.expectRevert(abi.encodeWithSelector(OwnerZeroAddress.selector));
+    new VaultBooster(prizePool, vault, address(0));
+  }
+
+  function testConstructor_VaultZeroAddress() public {
+    vm.expectRevert(abi.encodeWithSelector(VaultZeroAddress.selector));
+    new VaultBooster(prizePool, address(0), address(this));
+  }
+
+  // should fail since we call a function on the prize pool in the constructor
+  function testFailConstructor_PrizePoolZeroAddress() public {
+    new VaultBooster(PrizePool(address(0)), vault, address(this));
   }
 
   function testSetBoost() public {
