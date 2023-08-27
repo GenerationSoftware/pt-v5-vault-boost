@@ -229,7 +229,7 @@ contract VaultBooster is Ownable, ILiquidationSource {
     address tokenOut,
     uint256 amountOut,
     bytes calldata _flashSwapData
-  ) external override onlyPrizeToken(tokenIn) onlyLiquidationPair(tokenOut) returns (bool) {
+  ) external override onlyPrizeToken(tokenIn) onlyLiquidationPair(tokenOut) {
     uint256 amountAvailable = _computeAvailable(IERC20(tokenOut));
     if (amountOut > amountAvailable) {
       revert InsufficientAvailableBalance(amountOut, amountAvailable);
@@ -259,8 +259,6 @@ contract VaultBooster is Ownable, ILiquidationSource {
       amountOut,
       amountAvailable
     );
-
-    return true;
   }
 
   /// @notice Returns the liquidation target for the given input tokens. Input must be the prize token, and it always returns the prize pool.
