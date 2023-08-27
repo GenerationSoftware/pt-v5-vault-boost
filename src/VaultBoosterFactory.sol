@@ -30,7 +30,11 @@ contract VaultBoosterFactory  {
     /// @return The address of the new Vault Booster
     function createVaultBooster(PrizePool _prizePool, address _vault, address _owner) external returns (VaultBooster) {
         // Use CREATE2 constructor with a salt derived from caller's address and their unique nonce
-        VaultBooster booster = new VaultBooster{salt: keccak256(abi.encode(msg.sender, deployerNonces[msg.sender]++))}(_prizePool, _vault, _owner);
+        VaultBooster booster = (
+            new VaultBooster{salt: keccak256(abi.encode(msg.sender, deployerNonces[msg.sender]++))}(
+                _prizePool, _vault, _owner
+            )
+        );
 
         emit CreatedVaultBooster(booster, _prizePool, _vault, _owner);
 
