@@ -66,7 +66,7 @@ contract VaultBooster is Ownable, ILiquidationSource {
   /// @param lastAccruedAt The timestamp at which the boost was set
   event SetBoost(
     IERC20 indexed token,
-    address liquidationPair,
+    address indexed liquidationPair,
     UD2x18 multiplierOfTotalSupplyPerSecond,
     uint96 tokensPerSecond,
     uint144 initialAvailable,

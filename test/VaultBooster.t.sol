@@ -30,7 +30,7 @@ contract VaultBoosterTest is Test {
   
   event SetBoost(
     IERC20 indexed _token,
-    address _liquidationPair,
+    address indexed _liquidationPair,
     UD2x18 _multiplierOfTotalSupplyPerSecond,
     uint96 _tokensPerSecond,
     uint144 _initialAvailable,
