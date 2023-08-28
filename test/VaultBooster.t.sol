@@ -16,6 +16,8 @@ import {
   VaultZeroAddress,
   OwnerZeroAddress,
   CannotDepositWithoutBoost,
+  TokenZeroAddress,
+  LiquidationPairZeroAddress,
   InsufficientAvailableBalance
 } from "../src/VaultBooster.sol";
 
@@ -129,6 +131,16 @@ contract VaultBoosterTest is Test {
     booster.setBoost(boostToken, liquidationPair, UD2x18.wrap(0.001e18), 0.03e18, 1e18);
     Boost memory boost = booster.getBoost(boostToken);
     assertEq(boost.available, 1e18);
+  }
+
+  function testSetBoost_TokenZeroAddress() public {
+    vm.expectRevert(abi.encodeWithSelector(TokenZeroAddress.selector));
+    booster.setBoost(IERC20(address(0)), liquidationPair, UD2x18.wrap(0.001e18), 0.03e18, 1e18);
+  }
+
+  function testSetBoost_LiquidationPairZeroAddress() public {
+    vm.expectRevert(abi.encodeWithSelector(LiquidationPairZeroAddress.selector));
+    booster.setBoost(IERC20(address(boostToken)), address(0), UD2x18.wrap(0.001e18), 0.03e18, 1e18);
   }
 
   function testSetBoost_ltAvailable() public {
