@@ -223,7 +223,7 @@ contract VaultBooster is Ownable, ILiquidationSource {
     _boosts[IERC20(_token)].available = (
       (availableBoost > remainingBalance ? remainingBalance : availableBoost).toUint144()
     );
-    _token.transfer(msg.sender, _amount);
+    _token.safeTransfer(msg.sender, _amount);
 
     emit Withdrawn(_token, msg.sender, _amount);
   }
