@@ -35,6 +35,12 @@ error OwnerZeroAddress();
 /// @param token The token that was attempted to be deposited
 error CannotDepositWithoutBoost(IERC20 token);
 
+/// @notice Emitted when the token is set to the zero address.
+error TokenZeroAddress();
+
+/// @notice Emitted when the liquidation pair param is the zero address.
+error LiquidationPairZeroAddress();
+
 /// @notice Struct that holds the boost data
 struct Boost {
   address liquidationPair;
@@ -151,7 +157,15 @@ contract VaultBooster is Ownable, ILiquidationSource {
   /// @param _multiplierOfTotalSupplyPerSecond The multiplier of the total supply per second, useful for simulating APR. Can be combined with tokensPerSecond.
   /// @param _tokensPerSecond A simple tokensPerSecond*deltaTime accumulator. Can be combined with the multiplier.
   /// @param _initialAvailable The initial available balance. If this value is greater than this contract's current balance of the given token, the current balance will be used instead.
-  function setBoost(IERC20 _token, address _liquidationPair, UD2x18 _multiplierOfTotalSupplyPerSecond, uint96 _tokensPerSecond, uint144 _initialAvailable) external onlyOwner {
+  function setBoost(
+    IERC20 _token,
+    address _liquidationPair,
+    UD2x18 _multiplierOfTotalSupplyPerSecond,
+    uint96 _tokensPerSecond,
+    uint144 _initialAvailable
+  ) external onlyOwner {
+    if (address(_token) == address(0)) revert TokenZeroAddress();
+    if (_liquidationPair == address(0)) revert LiquidationPairZeroAddress();
     uint144 available;
     if (_initialAvailable > 0) {
       uint256 balance = _token.balanceOf(address(this));
@@ -206,7 +220,9 @@ contract VaultBooster is Ownable, ILiquidationSource {
     uint256 availableBoost = _accrue(_token);
     uint256 availableBalance = _token.balanceOf(address(this));
     uint256 remainingBalance = availableBalance - _amount;
-    _boosts[IERC20(_token)].available = (availableBoost > remainingBalance ? remainingBalance : availableBoost).toUint144();
+    _boosts[IERC20(_token)].available = (
+      (availableBoost > remainingBalance ? remainingBalance : availableBoost).toUint144()
+    );
     _token.safeTransfer(msg.sender, _amount);
 
     emit Withdrawn(_token, msg.sender, _amount);
@@ -295,8 +311,15 @@ contract VaultBooster is Ownable, ILiquidationSource {
       deltaAmount = boost.tokensPerSecond * deltaTime;
     }
     if (boost.multiplierOfTotalSupplyPerSecond.unwrap() > 0) {
-      uint256 totalSupply = twabController.getTotalSupplyTwabBetween(address(vault), uint32(boost.lastAccruedAt), uint32(block.timestamp));
-      deltaAmount += convert(boost.multiplierOfTotalSupplyPerSecond.intoUD60x18().mul(convert(deltaTime)).mul(convert(totalSupply)));
+      uint256 totalSupply = twabController.getTotalSupplyTwabBetween(
+        address(vault),
+        uint32(boost.lastAccruedAt),
+        uint32(block.timestamp)
+      );
+      deltaAmount += convert(boost.multiplierOfTotalSupplyPerSecond.intoUD60x18()
+          .mul(convert(deltaTime))
+          .mul(convert(totalSupply))
+      );
     }
     uint256 actualBalance = _tokenOut.balanceOf(address(this));
     uint256 availableBoost = boost.available + deltaAmount;
