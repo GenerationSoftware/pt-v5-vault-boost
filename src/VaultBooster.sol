@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import { IFlashSwapCallback } from "pt-v5-liquidator-interfaces/interfaces/IFlashSwapCallback.sol";
 import { ILiquidationSource } from "pt-v5-liquidator-interfaces/interfaces/ILiquidationSource.sol";
 import { PrizePool, IERC20, TwabController } from "pt-v5-prize-pool/PrizePool.sol";
 import { UD60x18, convert } from "prb-math/UD60x18.sol";
@@ -236,16 +235,12 @@ contract VaultBooster is Ownable, ILiquidationSource {
   }
 
   /// @inheritdoc ILiquidationSource
-  /// @notice Allows the liquidation pair to liquidate tokens
-  function liquidate(
-    address sender,
+  function transferTokensOut(
+    address,
     address receiver,
-    address tokenIn,
-    uint256 amountIn,
     address tokenOut,
-    uint256 amountOut,
-    bytes calldata _flashSwapData
-  ) external override onlyPrizeToken(tokenIn) onlyLiquidationPair(tokenOut) {
+    uint256 amountOut
+  ) external override onlyLiquidationPair(tokenOut) {
     uint256 amountAvailable = _computeAvailable(IERC20(tokenOut));
     if (amountOut > amountAvailable) {
       revert InsufficientAvailableBalance(amountOut, amountAvailable);
@@ -255,26 +250,16 @@ contract VaultBooster is Ownable, ILiquidationSource {
     _boosts[IERC20(tokenOut)].lastAccruedAt = uint48(block.timestamp);
 
     IERC20(tokenOut).safeTransfer(receiver, amountOut);
+  }
 
-    if (_flashSwapData.length > 0) {
-      IFlashSwapCallback(receiver).flashSwapCallback(
-        msg.sender,
-        sender,
-        amountIn,
-        amountOut,
-        _flashSwapData
-      );
-    }
-    
+  /// @inheritdoc ILiquidationSource
+  function verifyTokensIn(
+    address,
+    address,
+    address tokenIn,
+    uint256 amountIn
+  ) external onlyPrizeToken(tokenIn) {
     prizePool.contributePrizeTokens(vault, amountIn);
-
-    emit Liquidated(
-      IERC20(tokenOut),
-      receiver,
-      amountIn,
-      amountOut,
-      amountAvailable
-    );
   }
 
   /// @notice Returns the liquidation target for the given input tokens. Input must be the prize token, and it always returns the prize pool.
@@ -344,6 +329,8 @@ contract VaultBooster is Ownable, ILiquidationSource {
     _;
   }
 
+  /// @notice Ensures that the passed token is being actively boosted
+  /// @param _token The token to check
   modifier onlyBoosted(IERC20 _token) {
     if (_boosts[_token].liquidationPair == address(0)) {
       revert CannotDepositWithoutBoost(_token);
