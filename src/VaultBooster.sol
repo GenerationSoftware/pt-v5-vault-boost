@@ -236,7 +236,7 @@ contract VaultBooster is Ownable, ILiquidationSource {
 
   /// @inheritdoc ILiquidationSource
   function transferTokensOut(
-    address sender,
+    address,
     address receiver,
     address tokenOut,
     uint256 amountOut
@@ -254,8 +254,8 @@ contract VaultBooster is Ownable, ILiquidationSource {
 
   /// @inheritdoc ILiquidationSource
   function verifyTokensIn(
-    address sender,
-    address receiver,
+    address,
+    address,
     address tokenIn,
     uint256 amountIn
   ) external onlyPrizeToken(tokenIn) {
