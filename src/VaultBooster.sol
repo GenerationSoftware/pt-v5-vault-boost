@@ -134,9 +134,10 @@ contract VaultBooster is Ownable, ILiquidationSource {
     PrizePool _prizePool,
     address _vault,
     address _owner
-  ) Ownable(_owner) {
+  ) Ownable() {
     if (address(0) == _vault) revert VaultZeroAddress();
     if (address(0) == _owner) revert OwnerZeroAddress();
+    _transferOwnership(_owner);
     prizePool = _prizePool;
     twabController = prizePool.twabController();
     vault = _vault;
