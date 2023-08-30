@@ -12,4 +12,4 @@
 	url = https://github.com/openzeppelin/openzeppelin-contracts
 [submodule "lib/pt-v5-liquidator-interfaces"]
 	path = lib/pt-v5-liquidator-interfaces
-	url = git@github.com:GenerationSoftware/pt-v5-liquidator-interfaces-PRIVATE.git
+	url = https://github.com/generationsoftware/pt-v5-liquidator-interfaces
