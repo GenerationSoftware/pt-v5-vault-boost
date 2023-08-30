@@ -21,7 +21,7 @@ import {
   InsufficientAvailableBalance
 } from "../src/VaultBooster.sol";
 
-import { IFlashSwapCallback } from "pt-v5-liquidator-interfaces/interfaces/IFlashSwapCallback.sol";
+import { IFlashSwapCallback } from "pt-v5-liquidator-interfaces/IFlashSwapCallback.sol";
 import { PrizePool, TwabController, IERC20 } from "pt-v5-prize-pool/PrizePool.sol";
 
 /// @dev See the "Writing Tests" section in the Foundry Book if this is your first time with Forge.
