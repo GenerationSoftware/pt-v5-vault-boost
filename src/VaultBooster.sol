@@ -240,7 +240,7 @@ contract VaultBooster is Ownable, ILiquidationSource {
     address receiver,
     address tokenOut,
     uint256 amountOut
-  ) external override onlyLiquidationPair(tokenOut) {
+  ) external override onlyLiquidationPair(tokenOut) returns (bytes memory) {
     uint256 amountAvailable = _computeAvailable(IERC20(tokenOut));
     if (amountOut > amountAvailable) {
       revert InsufficientAvailableBalance(amountOut, amountAvailable);
@@ -250,15 +250,16 @@ contract VaultBooster is Ownable, ILiquidationSource {
     _boosts[IERC20(tokenOut)].lastAccruedAt = uint48(block.timestamp);
 
     IERC20(tokenOut).safeTransfer(receiver, amountOut);
+
+    return abi.encode(tokenOut);
   }
 
   /// @inheritdoc ILiquidationSource
   function verifyTokensIn(
-    address,
-    address,
     address tokenIn,
-    uint256 amountIn
-  ) external onlyPrizeToken(tokenIn) {
+    uint256 amountIn,
+    bytes calldata transferTokensOutData
+  ) external onlyPrizeToken(tokenIn) onlyLiquidationPair(abi.decode(transferTokensOutData, (address))) {
     prizePool.contributePrizeTokens(vault, amountIn);
   }
 

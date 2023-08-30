@@ -374,7 +374,17 @@ contract VaultBoosterTest is Test {
       abi.encode(0)
     );
 
-    booster.verifyTokensIn(address(this), address(this), address(prizeToken), 1000e18);
+    booster.setBoost(boostToken, liquidationPair, UD2x18.wrap(0), 1e18, 0);
+
+    vm.startPrank(liquidationPair);
+    booster.verifyTokensIn(address(prizeToken), 1000e18, abi.encode(boostToken));
+    vm.stopPrank();
+  }
+
+  function testVerifyTokensIn_OnlyLiquidationPair() public {
+    booster.setBoost(boostToken, liquidationPair, UD2x18.wrap(0), 1e18, 0);
+    vm.expectRevert(abi.encodeWithSelector(OnlyLiquidationPair.selector));
+    booster.verifyTokensIn(address(prizeToken), 1000e18, abi.encode(boostToken));
   }
 
   function testTargetOf() public {
