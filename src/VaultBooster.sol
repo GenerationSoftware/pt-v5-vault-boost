@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import { ILiquidationSource } from "pt-v5-liquidator-interfaces/interfaces/ILiquidationSource.sol";
+import { ILiquidationSource } from "pt-v5-liquidator-interfaces/ILiquidationSource.sol";
 import { PrizePool, IERC20, TwabController } from "pt-v5-prize-pool/PrizePool.sol";
 import { UD60x18, convert } from "prb-math/UD60x18.sol";
 import { UD2x18, intoUD60x18 } from "prb-math/UD2x18.sol";
