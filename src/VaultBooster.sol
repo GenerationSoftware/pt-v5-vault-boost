@@ -183,6 +183,9 @@ contract VaultBooster is Ownable, ILiquidationSource {
       lastAccruedAt: uint48(block.timestamp)
     });
 
+    /// @dev See ILiquidationSource.LiquidationPairSet
+    emit LiquidationPairSet(address(_token), _liquidationPair);
+
     emit SetBoost(
       _token,
       _liquidationPair,
@@ -228,9 +231,7 @@ contract VaultBooster is Ownable, ILiquidationSource {
     emit Withdrawn(_token, msg.sender, _amount);
   }
 
-  /// @notice Returns the available amount of tokens for a boost
-  /// @param _tokenOut The token whose boost should be checked
-  /// @return The available amount boost tokens
+  /// @inheritdoc ILiquidationSource
   function liquidatableBalanceOf(address _tokenOut) external override returns (uint256) {
     return _accrue(IERC20(_tokenOut));
   }
@@ -264,9 +265,14 @@ contract VaultBooster is Ownable, ILiquidationSource {
     prizePool.contributePrizeTokens(vault, amountIn);
   }
 
-  /// @notice Returns the liquidation target for the given input tokens. Input must be the prize token, and it always returns the prize pool.
-  /// @param _tokenIn The token that will be received. Revert if it isn't the prize token.
-  /// @return The address of the prize pool
+  /// @inheritdoc ILiquidationSource
+  function isLiquidationPair(address tokenOut, address liquidationPair) external view returns (bool) {
+    return liquidationPair == _boosts[IERC20(tokenOut)].liquidationPair;
+  }
+
+  /// @inheritdoc ILiquidationSource
+  /// @dev Reverts if `_tokenIn` it isn't the prize token.
+  /// @dev Always returns the prize pool address.
   function targetOf(address _tokenIn) external view override onlyPrizeToken(_tokenIn) returns (address) {
     return address(prizePool);
   }

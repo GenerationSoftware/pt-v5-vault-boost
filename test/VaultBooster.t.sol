@@ -27,6 +27,8 @@ import { PrizePool, TwabController, IERC20 } from "pt-v5-prize-pool/PrizePool.so
 /// @dev See the "Writing Tests" section in the Foundry Book if this is your first time with Forge.
 /// https://book.getfoundry.sh/forge/writing-tests
 contract VaultBoosterTest is Test {
+
+  event LiquidationPairSet(address indexed tokenOut, address indexed liquidationPair);
   
   event SetBoost(
     IERC20 indexed _token,
@@ -108,6 +110,8 @@ contract VaultBoosterTest is Test {
   }
 
   function testSetBoost() public {
+    vm.expectEmit();
+    emit LiquidationPairSet(address(boostToken), address(liquidationPair));
     vm.expectEmit(true, true, true, true);
     emit SetBoost(
       boostToken,
