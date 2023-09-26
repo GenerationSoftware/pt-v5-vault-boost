@@ -138,6 +138,14 @@ contract VaultBoosterTest is Test {
     assertEq(boost.available, 0.5e18);
   }
 
+  function testIsLiquidationPair() public {
+    assertEq(booster.isLiquidationPair(address(boostToken), address(liquidationPair)), false);
+    booster.setBoost(boostToken, liquidationPair, UD2x18.wrap(0.001e18), 0.03e18, 0);
+    assertEq(booster.isLiquidationPair(address(boostToken), address(liquidationPair)), true);
+    assertEq(booster.isLiquidationPair(address(boostToken), address(1)), false);
+    assertEq(booster.isLiquidationPair(address(1), address(liquidationPair)), false);
+  }
+
   function testDeposit_success() public {
     mockBoostTokenBalance(1e18);
     booster.setBoost(boostToken, liquidationPair, UD2x18.wrap(0), 0, 1e18);
