@@ -3,23 +3,7 @@ pragma solidity 0.8.19;
 
 import "forge-std/Test.sol";
 
-import {
-  VaultBooster,
-  Boost,
-  UD60x18,
-  UD2x18,
-  OnlyLiquidationPair,
-  UnsupportedTokenIn,
-  InsufficientAvailableBalance,
-  ZeroAmountWithdraw,
-  ZeroAmountDeposit,
-  VaultZeroAddress,
-  OwnerZeroAddress,
-  CannotDepositWithoutBoost,
-  TokenZeroAddress,
-  LiquidationPairZeroAddress,
-  InsufficientAvailableBalance
-} from "../src/VaultBooster.sol";
+import { VaultBooster, Boost, UD60x18, UD2x18, OnlyLiquidationPair, UnsupportedTokenIn, InsufficientAvailableBalance, ZeroAmountWithdraw, ZeroAmountDeposit, VaultZeroAddress, OwnerZeroAddress, CannotDepositWithoutBoost, TokenZeroAddress, LiquidationPairZeroAddress, InsufficientAvailableBalance } from "../src/VaultBooster.sol";
 
 import { IFlashSwapCallback } from "pt-v5-liquidator-interfaces/IFlashSwapCallback.sol";
 import { PrizePool, TwabController, IERC20 } from "pt-v5-prize-pool/PrizePool.sol";
@@ -27,9 +11,8 @@ import { PrizePool, TwabController, IERC20 } from "pt-v5-prize-pool/PrizePool.so
 /// @dev See the "Writing Tests" section in the Foundry Book if this is your first time with Forge.
 /// https://book.getfoundry.sh/forge/writing-tests
 contract VaultBoosterTest is Test {
-
   event LiquidationPairSet(address indexed tokenOut, address indexed liquidationPair);
-  
+
   event SetBoost(
     IERC20 indexed _token,
     address indexed _liquidationPair,
@@ -39,17 +22,9 @@ contract VaultBoosterTest is Test {
     uint48 lastAccruedAt
   );
 
-  event Deposited(
-    IERC20 indexed _token,
-    address indexed _from,
-    uint256 _amount
-  );
+  event Deposited(IERC20 indexed _token, address indexed _from, uint256 _amount);
 
-  event Withdrawn(
-    IERC20 indexed _token,
-    address indexed _from,
-    uint256 _amount
-  );
+  event Withdrawn(IERC20 indexed _token, address indexed _from, uint256 _amount);
 
   event Liquidated(
     IERC20 indexed token,
@@ -59,10 +34,7 @@ contract VaultBoosterTest is Test {
     uint256 availableBoostBalance
   );
 
-  event BoostAccrued(
-    IERC20 indexed token,
-    uint256 availableBoostBalance
-  );
+  event BoostAccrued(IERC20 indexed token, uint256 availableBoostBalance);
 
   VaultBooster booster;
 
@@ -81,8 +53,16 @@ contract VaultBoosterTest is Test {
     vault = makeAddr("vault");
     prizePool = PrizePool(makeAddr("prizePool"));
     twabController = TwabController(makeAddr("twabController"));
-    vm.mockCall(address(prizePool), abi.encodeWithSelector(prizePool.twabController.selector), abi.encode(twabController));
-    vm.mockCall(address(prizePool), abi.encodeWithSelector(prizePool.prizeToken.selector), abi.encode(prizeToken));
+    vm.mockCall(
+      address(prizePool),
+      abi.encodeWithSelector(prizePool.twabController.selector),
+      abi.encode(twabController)
+    );
+    vm.mockCall(
+      address(prizePool),
+      abi.encodeWithSelector(prizePool.prizeToken.selector),
+      abi.encode(prizeToken)
+    );
 
     booster = new VaultBooster(prizePool, vault, address(this));
   }
@@ -131,7 +111,11 @@ contract VaultBoosterTest is Test {
   }
 
   function testSetBoost_available() public {
-    vm.mockCall(address(boostToken), abi.encodeWithSelector(IERC20.balanceOf.selector, address(booster)), abi.encode(1e18));
+    vm.mockCall(
+      address(boostToken),
+      abi.encodeWithSelector(IERC20.balanceOf.selector, address(booster)),
+      abi.encode(1e18)
+    );
     booster.setBoost(boostToken, liquidationPair, UD2x18.wrap(0.001e18), 0.03e18, 1e18);
     Boost memory boost = booster.getBoost(boostToken);
     assertEq(boost.available, 1e18);
@@ -157,7 +141,11 @@ contract VaultBoosterTest is Test {
   function testDeposit_success() public {
     mockBoostTokenBalance(1e18);
     booster.setBoost(boostToken, liquidationPair, UD2x18.wrap(0), 0, 1e18);
-    vm.mockCall(address(boostToken), abi.encodeWithSelector(IERC20.transferFrom.selector, address(this), address(booster), 2e18), abi.encode(true));
+    vm.mockCall(
+      address(boostToken),
+      abi.encodeWithSelector(IERC20.transferFrom.selector, address(this), address(booster), 2e18),
+      abi.encode(true)
+    );
     vm.warp(1 days);
 
     vm.expectEmit(true, true, true, true);
@@ -171,7 +159,11 @@ contract VaultBoosterTest is Test {
   function testDeposit_ZeroAmountDeposit() public {
     mockBoostTokenBalance(1e18);
     booster.setBoost(boostToken, liquidationPair, UD2x18.wrap(0), 0, 1e18);
-    vm.mockCall(address(boostToken), abi.encodeWithSelector(IERC20.transferFrom.selector, address(this), address(booster), 2e18), abi.encode(true));
+    vm.mockCall(
+      address(boostToken),
+      abi.encodeWithSelector(IERC20.transferFrom.selector, address(this), address(booster), 2e18),
+      abi.encode(true)
+    );
     vm.warp(1 days);
 
     vm.expectRevert(abi.encodeWithSelector(ZeroAmountDeposit.selector));
@@ -371,10 +363,7 @@ contract VaultBoosterTest is Test {
   function testVerifyTokensIn() public {
     vm.mockCall(
       address(prizePool),
-      abi.encodeCall(
-        prizePool.contributePrizeTokens,
-        (address(vault), 1000e18)
-      ),
+      abi.encodeCall(prizePool.contributePrizeTokens, (address(vault), 1000e18)),
       abi.encode(0)
     );
 
@@ -403,7 +392,10 @@ contract VaultBoosterTest is Test {
   /** =========== MOCKS ============= */
 
   function mockBoostTokenBalance(uint256 _balance) public {
-    vm.mockCall(address(boostToken), abi.encodeWithSelector(IERC20.balanceOf.selector, address(booster)), abi.encode(_balance));
+    vm.mockCall(
+      address(boostToken),
+      abi.encodeWithSelector(IERC20.balanceOf.selector, address(booster)),
+      abi.encode(_balance)
+    );
   }
-
 }

@@ -15,7 +15,7 @@ error OnlyLiquidationPair();
 /// @notice Emitted when the liquidator attempts to liquidate more than the available balance
 error InsufficientAvailableBalance(uint256 amountOut, uint256 available);
 
-/// @notice Emitted when the liquidator attempts to liquidate for a token other than the prize token 
+/// @notice Emitted when the liquidator attempts to liquidate for a token other than the prize token
 error UnsupportedTokenIn();
 
 /// @notice Emitted when a withdraw of zero amount is initiated.
@@ -76,21 +76,13 @@ contract VaultBooster is Ownable, ILiquidationSource {
   /// @param token The token that they deposited
   /// @param from The account that deposited the tokens
   /// @param amount The amount that was deposited.
-  event Deposited(
-    IERC20 indexed token,
-    address indexed from,
-    uint256 amount
-  );
+  event Deposited(IERC20 indexed token, address indexed from, uint256 amount);
 
   /// @notice Emitted when tokens are withdrawn by the owner
   /// @param token The token that was withdrawn
   /// @param from The account that withdraw the tokens
   /// @param amount The amount of tokens that were withdrawn
-  event Withdrawn(
-    IERC20 indexed token,
-    address indexed from,
-    uint256 amount
-  );
+  event Withdrawn(IERC20 indexed token, address indexed from, uint256 amount);
 
   /// @notice Emitted when tokens are liquidated
   /// @param token The token that was sold
@@ -109,17 +101,14 @@ contract VaultBooster is Ownable, ILiquidationSource {
   /// @notice Emitted when boost tokens are accrued
   /// @param token The token that accrued
   /// @param availableBoostBalance The new available balance
-  event BoostAccrued(
-    IERC20 indexed token,
-    uint256 availableBoostBalance
-  );
+  event BoostAccrued(IERC20 indexed token, uint256 availableBoostBalance);
 
   /// @notice The prize pool that this booster will contribute to
   PrizePool public immutable prizePool;
 
   /// @notice The prize pool's twab controller; copied here to save gas
   TwabController public immutable twabController;
-  
+
   /// @notice The vault that the VaultBooster is boosting
   address public immutable vault;
 
@@ -130,11 +119,7 @@ contract VaultBooster is Ownable, ILiquidationSource {
   /// @param _prizePool The prize pool to contribute to
   /// @param _vault The vault to boost
   /// @param _owner The owner of the VaultBooster contract
-  constructor(
-    PrizePool _prizePool,
-    address _vault,
-    address _owner
-  ) Ownable() {
+  constructor(PrizePool _prizePool, address _vault, address _owner) Ownable() {
     if (address(0) == _vault) revert VaultZeroAddress();
     if (address(0) == _owner) revert OwnerZeroAddress();
     _transferOwnership(_owner);
@@ -196,11 +181,11 @@ contract VaultBooster is Ownable, ILiquidationSource {
     );
   }
 
-  /// @notice Deposits tokens into this contract. 
+  /// @notice Deposits tokens into this contract.
   /// @dev Useful because it ensures `accrue` is called before depositing
   /// @param _token The token to deposit
   /// @param _amount The amount to deposit
-  function deposit(IERC20 _token, uint256 _amount) onlyBoosted(_token) external {
+  function deposit(IERC20 _token, uint256 _amount) external onlyBoosted(_token) {
     if (0 == _amount) revert ZeroAmountDeposit();
     _accrue(_token);
     _token.safeTransferFrom(msg.sender, address(this), _amount);
@@ -261,19 +246,28 @@ contract VaultBooster is Ownable, ILiquidationSource {
     address tokenIn,
     uint256 amountIn,
     bytes calldata transferTokensOutData
-  ) external onlyPrizeToken(tokenIn) onlyLiquidationPair(abi.decode(transferTokensOutData, (address))) {
+  )
+    external
+    onlyPrizeToken(tokenIn)
+    onlyLiquidationPair(abi.decode(transferTokensOutData, (address)))
+  {
     prizePool.contributePrizeTokens(vault, amountIn);
   }
 
   /// @inheritdoc ILiquidationSource
-  function isLiquidationPair(address tokenOut, address liquidationPair) external view returns (bool) {
+  function isLiquidationPair(
+    address tokenOut,
+    address liquidationPair
+  ) external view returns (bool) {
     return liquidationPair == _boosts[IERC20(tokenOut)].liquidationPair;
   }
 
   /// @inheritdoc ILiquidationSource
   /// @dev Reverts if `_tokenIn` it isn't the prize token.
   /// @dev Always returns the prize pool address.
-  function targetOf(address _tokenIn) external view override onlyPrizeToken(_tokenIn) returns (address) {
+  function targetOf(
+    address _tokenIn
+  ) external view override onlyPrizeToken(_tokenIn) returns (address) {
     return address(prizePool);
   }
 
@@ -309,9 +303,10 @@ contract VaultBooster is Ownable, ILiquidationSource {
         uint32(boost.lastAccruedAt),
         uint32(block.timestamp)
       );
-      deltaAmount += convert(boost.multiplierOfTotalSupplyPerSecond.intoUD60x18()
-          .mul(convert(deltaTime))
-          .mul(convert(totalSupply))
+      deltaAmount += convert(
+        boost.multiplierOfTotalSupplyPerSecond.intoUD60x18().mul(convert(deltaTime)).mul(
+          convert(totalSupply)
+        )
       );
     }
     uint256 actualBalance = _tokenOut.balanceOf(address(this));
@@ -345,5 +340,4 @@ contract VaultBooster is Ownable, ILiquidationSource {
     }
     _;
   }
-
 }
