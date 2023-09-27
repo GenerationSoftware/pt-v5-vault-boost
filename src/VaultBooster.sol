@@ -263,7 +263,7 @@ contract VaultBooster is Ownable, ILiquidationSource {
   }
 
   /// @inheritdoc ILiquidationSource
-  /// @dev Reverts if `_tokenIn` it isn't the prize token.
+  /// @dev Reverts if `_tokenIn` isn't the prize token.
   /// @dev Always returns the prize pool address.
   function targetOf(
     address _tokenIn
