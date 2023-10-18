@@ -1,7 +1,7 @@
 [submodule "lib/pt-v5-prize-pool"]
 	path = lib/pt-v5-prize-pool
 	url = https://github.com/generationsoftware/pt-v5-prize-pool
-	branch = prod-testnet-2
+	branch = prod-deploy-2
 [submodule "lib/prb-math"]
 	path = lib/prb-math
 	url = https://github.com/PaulRBerg/prb-math
@@ -17,4 +17,4 @@
 [submodule "lib/pt-v5-liquidator-interfaces"]
 	path = lib/pt-v5-liquidator-interfaces
 	url = https://github.com/generationsoftware/pt-v5-liquidator-interfaces
-	branch = prod-testnet-2
+	branch = prod-deploy-2
