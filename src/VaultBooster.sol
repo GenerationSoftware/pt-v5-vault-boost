@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.19;
+pragma solidity ^0.8.24;
 
 import { ILiquidationSource } from "pt-v5-liquidator-interfaces/ILiquidationSource.sol";
 import { PrizePool, IERC20, TwabController } from "pt-v5-prize-pool/PrizePool.sol";
