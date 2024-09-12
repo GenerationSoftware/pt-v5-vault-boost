@@ -6,3 +6,9 @@ libs = ['lib']
 solc = "0.8.24"
 fs_permissions = [{ access = "read", path = "./broadcast"}]
 gas_reports = ["*"]
+
+[rpc_endpoints]
+scroll = "${SCROLL_RPC_URL}"
+
+[etherscan]
+scroll = { key = "${SCROLL_ETHERSCAN_API_KEY}", url = "https://api.scrollscan.com/api" }
