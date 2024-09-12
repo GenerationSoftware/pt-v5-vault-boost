@@ -27,6 +27,7 @@ contract SimpleBoost is Script {
   address public lpFactory;
   uint256 public amount;
   uint256 public duration;
+  bool public makeDeposit;
   uint256 public targetAuctionPriceWeth = uint256(1e15);
 
   function run() external {
@@ -40,6 +41,7 @@ contract SimpleBoost is Script {
       lpFactory = vm.envAddress("BOOST_LP_FACTORY");
       amount = vm.envUint("BOOST_AMOUNT");
       duration = vm.envUint("BOOST_DURATION");
+      makeDeposit = vm.envBool("BOOST_MAKE_DEPOSIT");
     }
     uint256 targetAuctionPeriod = PrizePool(prizePool).drawPeriodSeconds();
     address prizeToken = address(PrizePool(prizePool).prizeToken());
@@ -76,11 +78,13 @@ contract SimpleBoost is Script {
       0
     );
 
-    // Approve tokens
-    // IERC20(boostToken).approve(address(booster), amount);
+    if (makeDeposit) {
+      // Approve tokens
+      IERC20(boostToken).approve(address(booster), amount);
 
-    // Deposit tokens
-    // booster.deposit(IERC20(boostToken), amount);
+      // Deposit tokens
+      booster.deposit(IERC20(boostToken), amount);
+    }
 
     vm.stopBroadcast();
   }
