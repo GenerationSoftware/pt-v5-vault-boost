@@ -28,7 +28,7 @@ contract SimpleBoost is Script {
   uint256 public amount;
   uint256 public duration;
   bool public makeDeposit;
-  uint256 public targetAuctionPriceWeth = uint256(1e15);
+  uint256 public targetAuctionPriceWeth;
 
   function run() external {
 
@@ -45,10 +45,14 @@ contract SimpleBoost is Script {
     }
     uint256 targetAuctionPeriod = PrizePool(prizePool).drawPeriodSeconds();
     address prizeToken = address(PrizePool(prizePool).prizeToken());
-    require(
-      keccak256(abi.encode(IERC20Metadata(prizeToken).symbol())) == keccak256(abi.encode("WETH")),
-      "script is currently set up to only handle boosts on WETH prize pools"
-    );
+    string memory prizeTokenSymbol = IERC20Metadata(prizeToken).symbol();
+    if (keccak256(abi.encode(prizeTokenSymbol)) == keccak256(abi.encode("WETH"))) {
+      targetAuctionPriceWeth = uint256(1e15);
+    } else if (keccak256(abi.encode(prizeTokenSymbol)) == keccak256(abi.encode("WXDAI"))) {
+      targetAuctionPriceWeth = uint256(1e18);
+    } else {
+      revert("script is currently set up to only handle boosts on WETH or WXDAI prize pools");
+    }
 
     vm.startBroadcast();
 
