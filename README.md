@@ -12,6 +12,10 @@
 
 The PoolTogether V5 Vault Booster allows anyone to boost the winning chances of all users of a vault. The Vault Booster can liquidate any tokens and contribute them to the prize pool on behalf of the target vault.
 
+# Audits
+
+Audited by Code Arena in [PoolTogether V5: Part Deux](https://code4rena.com/reports/2023-08-pooltogether).
+
 ## Development
 
 ### Installation
