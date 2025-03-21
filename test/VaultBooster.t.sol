@@ -72,7 +72,7 @@ contract VaultBoosterTest is Test {
     booster = new VaultBooster(prizePool, vault, address(this));
   }
 
-  function testConstructor() public {
+  function testConstructor() public view {
     assertEq(address(booster.prizePool()), address(prizePool));
     assertEq(booster.vault(), vault);
     assertEq(address(booster.twabController()), address(twabController));
@@ -432,7 +432,7 @@ contract VaultBoosterTest is Test {
     booster.verifyTokensIn(address(prizeToken), 1000e18, abi.encode(boostToken));
   }
 
-  function testTargetOf() public {
+  function testTargetOf() public view {
     assertEq(booster.targetOf(address(prizeToken)), address(prizePool));
   }
 
