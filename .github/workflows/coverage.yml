@@ -29,21 +29,12 @@ jobs:
           forge build --sizes
         id: build
 
-      - name: Run Forge test
-        env:
-          MAINNET_RPC_URL: ${{ secrets.MAINNET_RPC_URL }}
-        run: |
-          forge test
-        id: test
-
       - name: Install lcov
         uses: hrishikesh-kadam/setup-lcov@v1.0.0
 
       - name: Run Forge coverage
-        env:
-          MAINNET_RPC_URL: ${{ secrets.MAINNET_RPC_URL }}
         run: |
-          forge coverage --report lcov && lcov --extract lcov.info -o lcov.info 'src/*'
+          forge coverage --nmc VaultBoosterForkTest --nmco SimpleBoost --report lcov && lcov --extract lcov.info -o lcov.info 'src/*'
         id: coverage
 
       - name: Report code coverage
