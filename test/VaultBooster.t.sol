@@ -3,7 +3,7 @@ pragma solidity 0.8.24;
 
 import "forge-std/Test.sol";
 
-import { VaultBooster, Boost, UD60x18, UD2x18, OnlyLiquidationPair, UnsupportedTokenIn, InsufficientAvailableBalance, ZeroAmountWithdraw, ZeroAmountDeposit, VaultZeroAddress, OwnerZeroAddress, CannotDepositWithoutBoost, TokenZeroAddress, LiquidationPairZeroAddress, InsufficientAvailableBalance } from "../src/VaultBooster.sol";
+import { VaultBooster, PrizePoolZeroAddress, Boost, UD60x18, UD2x18, OnlyLiquidationPair, UnsupportedTokenIn, InsufficientAvailableBalance, ZeroAmountWithdraw, ZeroAmountDeposit, VaultZeroAddress, OwnerZeroAddress, CannotDepositWithoutBoost, TokenZeroAddress, LiquidationPairZeroAddress, InsufficientAvailableBalance } from "../src/VaultBooster.sol";
 
 import { IFlashSwapCallback } from "pt-v5-liquidator-interfaces/IFlashSwapCallback.sol";
 import { PrizePool, TwabController, IERC20 } from "pt-v5-prize-pool/PrizePool.sol";
@@ -63,6 +63,11 @@ contract VaultBoosterTest is Test {
       abi.encodeWithSelector(prizePool.prizeToken.selector),
       abi.encode(prizeToken)
     );
+    vm.mockCall(
+      address(twabController),
+      abi.encodeWithSelector(twabController.PERIOD_LENGTH.selector),
+      abi.encode(1)
+    );
 
     booster = new VaultBooster(prizePool, vault, address(this));
   }
@@ -85,7 +90,8 @@ contract VaultBoosterTest is Test {
   }
 
   // should fail since we call a function on the prize pool in the constructor
-  function testFailConstructor_PrizePoolZeroAddress() public {
+  function testConstructor_PrizePoolZeroAddress() public {
+    vm.expectRevert(abi.encodeWithSelector(PrizePoolZeroAddress.selector));
     new VaultBooster(PrizePool(address(0)), vault, address(this));
   }
 
@@ -136,6 +142,21 @@ contract VaultBoosterTest is Test {
     booster.setBoost(boostToken, liquidationPair, UD2x18.wrap(0.001e18), 0.03e18, 1e18);
     Boost memory boost = booster.getBoost(boostToken);
     assertEq(boost.available, 0.5e18);
+  }
+
+  function testUpdateBoostRates() public {
+    mockBoostTokenBalance(0.5e18);
+    booster.updateBoostRates(boostToken, UD2x18.wrap(0.111e18), 0.333e18);
+    Boost memory boost = booster.getBoost(boostToken);
+    assertEq(boost.multiplierOfTotalSupplyPerSecond.unwrap(), 0.111e18);
+    assertEq(boost.tokensPerSecond, 0.333e18);
+  }
+
+  function testUpdateBoostLiquidationPair() public {
+    address liquidationPair2 = makeAddr("liquidationPair2");
+    booster.updateBoostLiquidationPair(boostToken, liquidationPair2);
+    Boost memory boost = booster.getBoost(boostToken);
+    assertEq(boost.liquidationPair, liquidationPair2);
   }
 
   function testIsLiquidationPair() public {
@@ -194,11 +215,12 @@ contract VaultBoosterTest is Test {
     assertEq(boost.available, 1e18); // 0.1e18 * 10
   }
 
-  function testAccrue_multiplier() public {
+  function testAccrue_multiplier_nonzero() public {
     vm.warp(0);
     mockBoostTokenBalance(1e18);
     booster.setBoost(boostToken, liquidationPair, UD2x18.wrap(0.02e18), 0, 0);
     vm.warp(10);
+    vm.mockCall(address(twabController), abi.encodeWithSelector(twabController.periodEndOnOrAfter.selector, 9), abi.encode(10));
     vm.mockCall(
       address(twabController),
       abi.encodeWithSelector(twabController.getTotalSupplyTwabBetween.selector, vault, 0, 10),
@@ -211,11 +233,29 @@ contract VaultBoosterTest is Test {
     assertEq(boost.available, 1e18, "available"); // 1 wei has acrrue
   }
 
+  function testAccrue_multiplier_zeroBalance() public {
+    vm.warp(0);
+    mockBoostTokenBalance(0);
+    booster.setBoost(boostToken, liquidationPair, UD2x18.wrap(0.02e18), 0, 0);
+    vm.warp(10);
+    vm.mockCall(address(twabController), abi.encodeWithSelector(twabController.periodEndOnOrAfter.selector, 9), abi.encode(10));
+    vm.mockCall(
+      address(twabController),
+      abi.encodeWithSelector(twabController.getTotalSupplyTwabBetween.selector, vault, 0, 10),
+      abi.encode(UD60x18.wrap(0))
+    );
+    booster.accrue(boostToken);
+    Boost memory boost = booster.getBoost(boostToken);
+    assertEq(boost.lastAccruedAt, 10, "last accrued at");
+    assertEq(boost.available, 0, "available");
+  }
+
   function testAccrue_both() public {
     vm.warp(0);
     mockBoostTokenBalance(100e18);
     booster.setBoost(boostToken, liquidationPair, UD2x18.wrap(0.02e18), 1e18, 0);
     vm.warp(10);
+    vm.mockCall(address(twabController), abi.encodeWithSelector(twabController.periodEndOnOrAfter.selector, 9), abi.encode(10));
     vm.mockCall(
       address(twabController),
       abi.encodeWithSelector(twabController.getTotalSupplyTwabBetween.selector, vault, 0, 10),
@@ -237,6 +277,7 @@ contract VaultBoosterTest is Test {
     mockBoostTokenBalance(1e18);
     booster.setBoost(boostToken, liquidationPair, UD2x18.wrap(0.02e18), 1e18, 0);
     vm.warp(10);
+    vm.mockCall(address(twabController), abi.encodeWithSelector(twabController.periodEndOnOrAfter.selector, 9), abi.encode(10));
     vm.mockCall(
       address(twabController),
       abi.encodeWithSelector(twabController.getTotalSupplyTwabBetween.selector, vault, 0, 10),
@@ -253,6 +294,7 @@ contract VaultBoosterTest is Test {
     mockBoostTokenBalance(100e18);
     booster.setBoost(boostToken, liquidationPair, UD2x18.wrap(0.02e18), 1e18, 0);
     vm.warp(10);
+    vm.mockCall(address(twabController), abi.encodeWithSelector(twabController.periodEndOnOrAfter.selector, 9), abi.encode(10));
     vm.mockCall(
       address(twabController),
       abi.encodeWithSelector(twabController.getTotalSupplyTwabBetween.selector, vault, 0, 10),
@@ -314,7 +356,7 @@ contract VaultBoosterTest is Test {
     assertEq(booster.liquidatableBalanceOf(address(boostToken)), 1e18);
   }
 
-  function testTransferTokensOut() public {
+  function testTransferTokensOut_success() public {
     vm.warp(0);
     booster.setBoost(boostToken, liquidationPair, UD2x18.wrap(0), 1e18, 0);
     mockBoostTokenBalance(1e18);
@@ -332,6 +374,7 @@ contract VaultBoosterTest is Test {
       abi.encode(9999e18)
     );
 
+    booster.accrue(boostToken);
     Boost memory boost = booster.getBoost(boostToken);
     assertEq(boost.available, 1e18); // cleared out
 
@@ -341,6 +384,7 @@ contract VaultBoosterTest is Test {
     booster.transferTokensOut(address(this), address(this), address(boostToken), 1e18);
     vm.stopPrank();
 
+    booster.accrue(boostToken);
     boost = booster.getBoost(boostToken);
     assertEq(boost.available, 0); // cleared out
     assertEq(boost.lastAccruedAt, 10); // accrued

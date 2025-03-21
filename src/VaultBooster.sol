@@ -9,6 +9,9 @@ import { Ownable } from "openzeppelin/access/Ownable.sol";
 import { SafeERC20 } from "openzeppelin/token/ERC20/utils/SafeERC20.sol";
 import { SafeCast } from "openzeppelin/utils/math/SafeCast.sol";
 
+/// @notice Emitted when the prize pool is set to the zero address.
+error PrizePoolZeroAddress();
+
 /// @notice Emitted when someone tries to call liquidate and isn't the liquidation pair
 error OnlyLiquidationPair();
 
@@ -72,6 +75,17 @@ contract VaultBooster is Ownable, ILiquidationSource {
     uint48 lastAccruedAt
   );
 
+  /// @notice Emitted when a boost is updated
+  /// @param token The token that was updated
+  /// @param multiplierOfTotalSupplyPerSecond The new multiplier of the total supply per second
+  /// @param tokensPerSecond The new number of tokens to accrue per second
+  event UpdatedBoostRates(IERC20 indexed token, UD2x18 multiplierOfTotalSupplyPerSecond, uint96 tokensPerSecond);
+
+  /// @notice Emitted when a boost's liquidation pair is updated
+  /// @param token The token that was updated
+  /// @param liquidationPair The new liquidation pair
+  event UpdatedBoostLiquidationPair(IERC20 indexed token, address liquidationPair);
+
   /// @notice Emitted when someone deposits tokens
   /// @param token The token that they deposited
   /// @param from The account that deposited the tokens
@@ -122,6 +136,7 @@ contract VaultBooster is Ownable, ILiquidationSource {
   constructor(PrizePool _prizePool, address _vault, address _owner) Ownable() {
     if (address(0) == _vault) revert VaultZeroAddress();
     if (address(0) == _owner) revert OwnerZeroAddress();
+    if (address(0) == address(_prizePool)) revert PrizePoolZeroAddress();
     _transferOwnership(_owner);
     prizePool = _prizePool;
     twabController = prizePool.twabController();
@@ -131,12 +146,11 @@ contract VaultBooster is Ownable, ILiquidationSource {
   /// @notice Retrieves boost details for a token
   /// @param _token The token whose boost details to retrieve
   /// @return The boost details
-  function getBoost(IERC20 _token) external returns (Boost memory) {
-    _accrue(_token);
+  function getBoost(IERC20 _token) external view returns (Boost memory) {
     return _boosts[_token];
   }
 
-  /// @notice Allows the owner to configure a boost for a token
+  /// @notice Allows the owner to configure a boost for a token. This resets any accrued balance
   /// @param _token The token that will be liquidated to boost the chances of the vault
   /// @param _liquidationPair The liquidation pair that will facilitate liquidations
   /// @param _multiplierOfTotalSupplyPerSecond The multiplier of the total supply per second, useful for simulating APR. Can be combined with tokensPerSecond.
@@ -179,6 +193,31 @@ contract VaultBooster is Ownable, ILiquidationSource {
       _initialAvailable,
       uint48(block.timestamp)
     );
+  }
+
+  /// @notice Allows the owner to update the boost parameters for a token
+  /// @param _token The token whose boost should be updated
+  /// @param _multiplierOfTotalSupplyPerSecond The new multiplier of the total supply per second
+  /// @param _tokensPerSecond The new number of tokens to accrue per second
+  function updateBoostRates(
+    IERC20 _token,
+    UD2x18 _multiplierOfTotalSupplyPerSecond,
+    uint96 _tokensPerSecond
+  ) external onlyOwner {
+    _accrue(_token);
+    _boosts[_token].multiplierOfTotalSupplyPerSecond = _multiplierOfTotalSupplyPerSecond;
+    _boosts[_token].tokensPerSecond = _tokensPerSecond;
+
+    emit UpdatedBoostRates(_token, _multiplierOfTotalSupplyPerSecond, _tokensPerSecond);
+  }
+
+  /// @notice Allows the owner to update the liquidation pair for a token
+  /// @param _token The token whose liquidation pair should be updated
+  /// @param _liquidationPair The new liquidation pair
+  function updateBoostLiquidationPair(IERC20 _token, address _liquidationPair) external onlyOwner {
+    _boosts[_token].liquidationPair = _liquidationPair;
+
+    emit UpdatedBoostLiquidationPair(_token, _liquidationPair);
   }
 
   /// @notice Deposits tokens into this contract.
@@ -228,13 +267,12 @@ contract VaultBooster is Ownable, ILiquidationSource {
     address tokenOut,
     uint256 amountOut
   ) external override onlyLiquidationPair(tokenOut) returns (bytes memory) {
-    uint256 amountAvailable = _computeAvailable(IERC20(tokenOut));
-    if (amountOut > amountAvailable) {
-      revert InsufficientAvailableBalance(amountOut, amountAvailable);
+    (uint256 accrued, uint256 accruedAt) = _computeAvailable(IERC20(tokenOut));
+    if (amountOut > accrued) {
+      revert InsufficientAvailableBalance(amountOut, accrued);
     }
-    amountAvailable = (amountAvailable - amountOut);
-    _boosts[IERC20(tokenOut)].available = amountAvailable.toUint144();
-    _boosts[IERC20(tokenOut)].lastAccruedAt = uint48(block.timestamp);
+    _boosts[IERC20(tokenOut)].available = (accrued - amountOut).toUint144();
+    _boosts[IERC20(tokenOut)].lastAccruedAt = uint48(accruedAt);
 
     IERC20(tokenOut).safeTransfer(receiver, amountOut);
 
@@ -275,43 +313,50 @@ contract VaultBooster is Ownable, ILiquidationSource {
   /// @param _tokenOut The token whose boost should be accrued
   /// @return The new available balance of the boost
   function _accrue(IERC20 _tokenOut) internal returns (uint256) {
-    uint256 available = _computeAvailable(_tokenOut);
-    _boosts[_tokenOut].available = available.toUint144();
-    _boosts[_tokenOut].lastAccruedAt = uint48(block.timestamp);
+    (uint256 accrued, uint256 accruedAt) = _computeAvailable(_tokenOut);
+    _boosts[_tokenOut].available = accrued.toUint144();
+    _boosts[_tokenOut].lastAccruedAt = uint48(accruedAt);
 
-    emit BoostAccrued(_tokenOut, available);
+    emit BoostAccrued(_tokenOut, accrued);
 
-    return available;
+    return accrued;
   }
 
   /// @notice Computes the available balance of the boost
   /// @param _tokenOut The token whose boost should be computed
-  /// @return The new available balance
-  function _computeAvailable(IERC20 _tokenOut) internal view returns (uint256) {
+  /// @return accrued The new available balance
+  /// @return accruedAt The time up until accrual occurred
+  function _computeAvailable(IERC20 _tokenOut) internal view returns (uint256 accrued, uint256 accruedAt) {
     Boost memory boost = _boosts[_tokenOut];
-    uint256 deltaTime = block.timestamp - boost.lastAccruedAt;
-    uint256 deltaAmount;
-    if (deltaTime == 0) {
-      return boost.available;
+    accrued = boost.available;
+    uint256 deltaTime; // must be shared, because time is quantized for the twab controller (if applicable)
+    if (boost.multiplierOfTotalSupplyPerSecond.unwrap() > 0) {
+      // the last period may or may not be finalized; so we go back one period and find the next.
+      uint256 timeNow = twabController.periodEndOnOrAfter(block.timestamp - twabController.PERIOD_LENGTH());
+      accruedAt = boost.lastAccruedAt;
+      if (timeNow > boost.lastAccruedAt) {
+        accruedAt = timeNow;
+        deltaTime = timeNow - boost.lastAccruedAt;
+        uint256 totalSupply = twabController.getTotalSupplyTwabBetween(
+          address(vault),
+          uint32(boost.lastAccruedAt),
+          uint32(timeNow)
+        );
+        accrued += convert(
+          boost.multiplierOfTotalSupplyPerSecond.intoUD60x18().mul(convert(deltaTime)).mul(
+            convert(totalSupply)
+          )
+        );
+      }
+    } else {
+      accruedAt = block.timestamp;
+      deltaTime = accruedAt - boost.lastAccruedAt;
     }
     if (boost.tokensPerSecond > 0) {
-      deltaAmount = boost.tokensPerSecond * deltaTime;
-    }
-    if (boost.multiplierOfTotalSupplyPerSecond.unwrap() > 0) {
-      uint256 totalSupply = twabController.getTotalSupplyTwabBetween(
-        address(vault),
-        uint32(boost.lastAccruedAt),
-        uint32(block.timestamp)
-      );
-      deltaAmount += convert(
-        boost.multiplierOfTotalSupplyPerSecond.intoUD60x18().mul(convert(deltaTime)).mul(
-          convert(totalSupply)
-        )
-      );
+      accrued += boost.tokensPerSecond * deltaTime;
     }
     uint256 actualBalance = _tokenOut.balanceOf(address(this));
-    uint256 availableBoost = boost.available + deltaAmount;
-    return actualBalance > availableBoost ? availableBoost : actualBalance;
+    accrued = actualBalance > accrued ? accrued : actualBalance;
   }
 
   /// @notice Requires the given token to be the prize token
